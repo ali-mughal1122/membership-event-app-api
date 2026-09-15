@@ -3,9 +3,7 @@ import { Event } from './event.entity';
 import { User } from '../../auth/entities/user.entity';
 
 export const RegistrationStatus = {
-  PENDING: 'PENDING',
-  APPROVED: 'APPROVED',
-  REJECTED: 'REJECTED',
+  REGISTERED: 'REGISTERED',
   CANCELLED: 'CANCELLED',
 } as const;
 
@@ -21,7 +19,7 @@ export class EventRegistration {
   @Column({ nullable: true })
   email: string;
 
-  @Column({ default: RegistrationStatus.PENDING })
+  @Column({ default: RegistrationStatus.REGISTERED })
   status: string;
 
   @CreateDateColumn()

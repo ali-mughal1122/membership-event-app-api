@@ -4,6 +4,8 @@ export interface PaginationQuery {
   search?: string;
   status?: string;
   duration?: number | string;
+  categoryId?: string;
+  urgency?: string;
 }
 
 export interface PaginatedResult<T> {

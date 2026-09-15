@@ -67,7 +67,7 @@ export class MailService {
     this.logger.log(`Finished sending new event notifications to ${memberEmails.length} members.`);
   }
 
-  async sendEventRegistrationEmail(memberEmail: string, event: EventEmailDetails, status = 'PENDING') {
+  async sendEventRegistrationEmail(memberEmail: string, event: EventEmailDetails, status = 'REGISTERED') {
     const eventUrl = this.buildEventUrl(event);
     const profileUrl = `${this.frontendUrl()}/profile`;
     const when = this.formatWhen(event.date, event.time);
@@ -76,9 +76,9 @@ export class MailService {
     try {
       await this.mailerService.sendMail({
         to: memberEmail,
-        subject: `Registration Received: ${event.title}`,
+        subject: `Successfully Registered: ${event.title}`,
         text: [
-          `Your registration for ${event.title} has been received successfully and is currently pending admin approval.`,
+          `You have been successfully registered for ${event.title}.`,
           `Date/Time: ${when}`,
           `Location: ${location}`,
           `Status: ${status}`,
@@ -86,8 +86,8 @@ export class MailService {
           `View profile: ${profileUrl}`,
         ].join('\n'),
         html: `
-          <p>Your registration for <strong>${this.escape(event.title)}</strong> has been received successfully and is currently pending admin approval.</p>
-          <p>Date/Time: ${this.escape(when)}<br/>Location: ${this.escape(location)}<br/>Status: ${this.escape(status)}</p>
+          <p>You have been successfully registered for <strong>${this.escape(event.title)}</strong>.</p>
+          <p>Date/Time: ${this.escape(when)}<br/>Location: ${this.escape(location)}<br/>Status: <strong>${this.escape(status)}</strong></p>
           <p><a href="${eventUrl}">View Event</a> &nbsp;|&nbsp; <a href="${profileUrl}">View Profile</a></p>
         `,
       });
@@ -97,45 +97,77 @@ export class MailService {
     }
   }
 
-  async sendRegistrationDecisionEmail(
-    memberEmail: string,
-    event: EventEmailDetails,
-    status: 'APPROVED' | 'REJECTED',
-  ) {
-    const eventUrl = this.buildEventUrl(event);
-    const approved = status === 'APPROVED';
-    const when = this.formatWhen(event.date, event.time);
-    const location = event.location || 'TBA';
-    const profileUrl = `${this.frontendUrl()}/profile`;
-    const subject = approved
-      ? `Successfully Registered: ${event.title}`
-      : `Registration Update: ${event.title}`;
-    const summary = approved
-      ? `You have been successfully registered for ${event.title}.`
-      : `Your registration for ${event.title} has been rejected.`;
-
+  async sendSupportRequestEmail(details: {
+    memberName: string;
+    memberEmail: string;
+    subject: string;
+    categoryName: string;
+    message: string;
+  }) {
+    const inboxUrl = `${this.frontendUrl()}/admin/support`;
     try {
       await this.mailerService.sendMail({
-        to: memberEmail,
-        subject,
+        to: this.adminEmail(),
+        subject: `New support request: ${details.subject}`,
         text: [
-          summary,
-          `Date/Time: ${when}`,
-          `Location: ${location}`,
-          `Status: ${status}`,
-          `View event: ${eventUrl}`,
-          `View profile: ${profileUrl}`,
+          `${details.memberName} (${details.memberEmail}) submitted a support request.`,
+          `Category: ${details.categoryName}`,
+          `Subject: ${details.subject}`,
+          '',
+          details.message,
+          '',
+          `Open in admin: ${inboxUrl}`,
         ].join('\n'),
         html: `
-          <p>${this.escape(summary)}</p>
-          <p>Date/Time: ${this.escape(when)}<br/>Location: ${this.escape(location)}<br/>Status: <strong>${status}</strong></p>
-          <p><a href="${eventUrl}">View Event</a> &nbsp;|&nbsp; <a href="${profileUrl}">View Profile</a></p>
+          <p><strong>${this.escape(details.memberName)}</strong> (${this.escape(details.memberEmail)}) submitted a support request.</p>
+          <p>Category: ${this.escape(details.categoryName)}<br/>Subject: ${this.escape(details.subject)}</p>
+          <p>${this.escape(details.message)}</p>
+          <p><a href="${inboxUrl}">Open Support Messages</a></p>
         `,
       });
-      this.logger.log(`Registration ${status} email sent to ${memberEmail} for ${event.title}`);
+      this.logger.log(`Support request email sent for ${details.memberEmail}`);
     } catch (error) {
-      this.logger.error(`Failed to send registration ${status} email to ${memberEmail}:`, error);
+      this.logger.error('Failed to send support request email:', error);
     }
+  }
+
+  async sendSupportReplyEmail(details: {
+    memberEmail: string;
+    memberName: string;
+    subject: string;
+    message: string;
+    conversationId: string;
+  }) {
+    const threadUrl = `${this.frontendUrl()}/profile/support/${details.conversationId}`;
+    try {
+      await this.mailerService.sendMail({
+        to: details.memberEmail,
+        subject: `Reply to your support request: ${details.subject}`,
+        text: [
+          `Hi ${details.memberName},`,
+          '',
+          'The admin replied to your support request.',
+          `Subject: ${details.subject}`,
+          '',
+          details.message,
+          '',
+          `View the conversation: ${threadUrl}`,
+        ].join('\n'),
+        html: `
+          <p>Hi ${this.escape(details.memberName)},</p>
+          <p>The admin replied to your support request <strong>${this.escape(details.subject)}</strong>.</p>
+          <p>${this.escape(details.message)}</p>
+          <p><a href="${threadUrl}">View conversation</a></p>
+        `,
+      });
+      this.logger.log(`Support reply email sent to ${details.memberEmail}`);
+    } catch (error) {
+      this.logger.error(`Failed to send support reply email to ${details.memberEmail}:`, error);
+    }
+  }
+
+  private adminEmail() {
+    return this.configService.get<string>('ADMIN_EMAIL') || 'admin@gmail.com';
   }
 
   private frontendUrl() {

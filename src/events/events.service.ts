@@ -4,6 +4,7 @@ import {
   HttpException,
   HttpStatus,
   NotFoundException,
+  OnModuleInit,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, IsNull, QueryFailedError, Repository } from 'typeorm';
@@ -16,10 +17,10 @@ import { MailService } from '../mail/mail.service';
 import { User } from '../auth/entities/user.entity';
 import { PaginationQuery, parsePagination, paginated } from '../common/pagination';
 
-const ACTIVE_REGISTRATION_STATUSES = [RegistrationStatus.PENDING, RegistrationStatus.APPROVED];
+const ACTIVE_REGISTRATION_STATUSES = [RegistrationStatus.REGISTERED];
 
 @Injectable()
-export class EventsService {
+export class EventsService implements OnModuleInit {
   private readonly logger = new Logger(EventsService.name);
 
   constructor(
@@ -32,6 +33,26 @@ export class EventsService {
     private membersService: MembersService,
     private mailService: MailService,
   ) {}
+
+  async onModuleInit() {
+    try {
+      await this.registrationsRepository
+        .createQueryBuilder()
+        .update(EventRegistration)
+        .set({ status: RegistrationStatus.REGISTERED })
+        .where('status IN (:...statuses)', { statuses: ['PENDING', 'APPROVED'] })
+        .execute();
+
+      await this.registrationsRepository
+        .createQueryBuilder()
+        .update(EventRegistration)
+        .set({ status: RegistrationStatus.CANCELLED })
+        .where('status = :status', { status: 'REJECTED' })
+        .execute();
+    } catch (error) {
+      this.logger.warn('Could not migrate event registration statuses:', error);
+    }
+  }
 
   async findAll(userId?: string, userType?: string, query: PaginationQuery = {}) {
     const includeDrafts = userType === 'ADMIN';
@@ -163,23 +184,13 @@ export class EventsService {
       throw this.error(HttpStatus.BAD_REQUEST, 'You are already registered for this event.', 'ALREADY_REGISTERED');
     }
 
-    const activeCount = await this.registrationsRepository.count({
-      where: {
-        eventId,
-        status: In(ACTIVE_REGISTRATION_STATUSES),
-      },
-    });
-    if (activeCount >= (event.capacity || 0)) {
-      throw this.error(HttpStatus.BAD_REQUEST, 'This event is full.', 'EVENT_FULL');
-    }
-
     const name = activeMembership?.user?.name || user.name || user.email;
     const email = activeMembership?.user?.email || user.email;
 
     let savedRegistration: EventRegistration;
     try {
       if (existingRegistration?.status === RegistrationStatus.CANCELLED) {
-        existingRegistration.status = RegistrationStatus.PENDING;
+        existingRegistration.status = RegistrationStatus.REGISTERED;
         existingRegistration.name = name;
         existingRegistration.email = email;
         savedRegistration = await this.registrationsRepository.save(existingRegistration);
@@ -189,7 +200,7 @@ export class EventsService {
           eventId,
           name,
           email,
-          status: RegistrationStatus.PENDING,
+          status: RegistrationStatus.REGISTERED,
         });
         savedRegistration = await this.registrationsRepository.save(registration);
       }
@@ -202,7 +213,7 @@ export class EventsService {
 
     if (email) {
       this.mailService
-        .sendEventRegistrationEmail(email, event, RegistrationStatus.PENDING)
+        .sendEventRegistrationEmail(email, event, RegistrationStatus.REGISTERED)
         .catch(error => this.logger.error('Failed to send registration confirmation email:', error));
     }
 
@@ -250,40 +261,11 @@ export class EventsService {
     return paginated(data, total, page, limit);
   }
 
-  async updateRegistrationStatus(eventId: string, registrationId: string, status: 'APPROVED' | 'REJECTED') {
-    const registration = await this.registrationsRepository.findOne({
-      where: { id: registrationId, eventId },
-      relations: { event: true, user: true },
-    });
-
-    if (!registration) {
-      throw new NotFoundException('Registration not found');
-    }
-
-    if (registration.status === status) {
-      return registration;
-    }
-
-    registration.status = status;
-    const saved = await this.registrationsRepository.save(registration);
-    const email = saved.email || saved.user?.email;
-
-    if (email) {
-      this.mailService
-        .sendRegistrationDecisionEmail(email, saved.event, status)
-        .catch(error => this.logger.error(`Failed to send registration ${status} email to ${email}:`, error));
-    } else {
-      this.logger.warn(`No email found for registration ${registrationId}; skipped ${status} notification.`);
-    }
-
-    return saved;
-  }
-
   async getRecentRegistrations(): Promise<any[]> {
     const registrations = await this.registrationsRepository.find({
       relations: { event: true },
       order: { timestamp: 'DESC' },
-      take: 8,
+      take: 10,
     });
 
     return registrations.map(reg => ({
@@ -338,9 +320,7 @@ export class EventsService {
     hasActiveMembership: boolean,
     userId?: string,
   ) {
-    const remainingSeats = Math.max(0, (event.capacity || 0) - registeredCount);
-    const isCancelled = userReg?.status === RegistrationStatus.CANCELLED;
-    const isRegistered = !!userReg && !isCancelled;
+    const isRegistered = userReg?.status === RegistrationStatus.REGISTERED;
     const registrationStatus = isRegistered ? userReg.status : null;
 
     let canRegister = false;
@@ -354,8 +334,6 @@ export class EventsService {
       registrationDisabledReason = 'EVENT_NOT_PUBLISHED';
     } else if (event.registrationDeadline && new Date(event.registrationDeadline).getTime() < Date.now()) {
       registrationDisabledReason = 'REGISTRATION_CLOSED';
-    } else if (remainingSeats <= 0) {
-      registrationDisabledReason = 'EVENT_FULL';
     } else if (event.membershipRequired && !hasActiveMembership) {
       registrationDisabledReason = 'MEMBERSHIP_REQUIRED';
     } else {
@@ -369,7 +347,6 @@ export class EventsService {
     return {
       ...safeEvent,
       registeredCount,
-      remainingSeats,
       membershipRequired: event.membershipRequired !== false,
       isRegistered,
       registrationStatus,

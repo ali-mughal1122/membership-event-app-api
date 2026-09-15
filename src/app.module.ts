@@ -11,6 +11,9 @@ import { MembersModule } from './members/members.module';
 import { MailModule } from './mail/mail.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { UsersModule } from './users/users.module';
+import { SeedModule } from './seed/seed.module';
+import { CategoriesModule } from './categories/categories.module';
+import { SupportModule } from './support/support.module';
 
 @Module({
   imports: [
@@ -48,10 +51,16 @@ import { UsersModule } from './users/users.module';
       }),
       inject: [ConfigService],
     }),
-    AuthModule, 
-    EventsModule, 
-    PlansModule, 
-    MembersModule, MailModule, ReviewsModule, UsersModule
+    AuthModule,
+    EventsModule,
+    PlansModule,
+    MembersModule,
+    MailModule,
+    ReviewsModule,
+    UsersModule,
+    CategoriesModule,
+    SupportModule,
+    SeedModule,
   ],
   controllers: [AppController],
   providers: [AppService],

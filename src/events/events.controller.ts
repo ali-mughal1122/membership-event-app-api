@@ -99,22 +99,4 @@ export class EventsController {
   register(@Param('id') id: string, @Request() req: any) {
     return this.eventsService.registerForEvent(id, req.user.userId);
   }
-
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
-  @ApiBearerAuth()
-  @Post(':id/registrations/:regId/approve')
-  @ApiOperation({ summary: 'Approve an event registration' })
-  approveRegistration(@Param('id') id: string, @Param('regId') regId: string) {
-    return this.eventsService.updateRegistrationStatus(id, regId, 'APPROVED');
-  }
-
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
-  @ApiBearerAuth()
-  @Post(':id/registrations/:regId/reject')
-  @ApiOperation({ summary: 'Reject an event registration' })
-  rejectRegistration(@Param('id') id: string, @Param('regId') regId: string) {
-    return this.eventsService.updateRegistrationStatus(id, regId, 'REJECTED');
-  }
 }

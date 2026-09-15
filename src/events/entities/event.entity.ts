@@ -21,9 +21,6 @@ export class Event {
   @Column({ default: 'Published' })
   status: string;
 
-  @Column({ default: 100 })
-  capacity: number;
-
   @Column({ nullable: true })
   time: string;
 
