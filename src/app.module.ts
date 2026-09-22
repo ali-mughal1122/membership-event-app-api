@@ -38,15 +38,15 @@ import { SupportModule } from './support/support.module';
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
         transport: {
-          host: configService.get<string>('SMTP_HOST'),
-          port: configService.get<number>('SMTP_PORT'),
+          host: configService.get<string>('SMTP_HOST') || 'sandbox.smtp.mailtrap.io',
+          port: Number(configService.get('SMTP_PORT')) || 587,
           auth: {
             user: configService.get<string>('SMTP_USER'),
             pass: configService.get<string>('SMTP_PASSWORD'),
           },
         },
         defaults: {
-          from: '"Membership Events" <noreply@membershipapp.com>',
+          from: '"taxiterminalen" <noreply@membershipapp.com>',
         },
       }),
       inject: [ConfigService],

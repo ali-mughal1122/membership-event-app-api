@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, DeleteDateColumn } from 'typeorm';
 
 @Entity()
 export class Plan {
@@ -19,4 +19,7 @@ export class Plan {
 
   @Column('simple-array', { nullable: true })
   features: string[];
+
+  @DeleteDateColumn()
+  deletedAt?: Date;
 }

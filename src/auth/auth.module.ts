@@ -7,13 +7,17 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { User } from './entities/user.entity';
+import { AuthToken } from './entities/auth-token.entity';
+import { AuthTokenService } from './auth-token.service';
 import { MembersModule } from '../members/members.module';
+import { MailModule } from '../mail/mail.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, AuthToken]),
     PassportModule,
     MembersModule,
+    MailModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
@@ -24,7 +28,7 @@ import { MembersModule } from '../members/members.module';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
-  exports: [AuthService],
+  providers: [AuthService, JwtStrategy, AuthTokenService],
+  exports: [AuthService, AuthTokenService],
 })
 export class AuthModule { }

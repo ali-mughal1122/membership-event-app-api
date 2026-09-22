@@ -1,16 +1,20 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Member } from './entities/member.entity';
 import { CreateMemberDto } from './dto/create-member.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
 import { PaginationQuery, parsePagination, paginated } from '../common/pagination';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class MembersService {
+  private readonly logger = new Logger(MembersService.name);
+
   constructor(
     @InjectRepository(Member)
     private membersRepository: Repository<Member>,
+    private mailService: MailService,
   ) {}
 
   async findAll(query: PaginationQuery = {}) {
@@ -62,11 +66,14 @@ export class MembersService {
   }
 
   async getActiveMembershipForUser(userId: string) {
-    const member = await this.membersRepository.findOne({
-      where: { user: { id: userId }, status: 'ACTIVE' },
-      relations: { user: true, plan: true },
-      order: { endDate: 'DESC' },
-    });
+    const member = await this.membersRepository
+      .createQueryBuilder('member')
+      .leftJoinAndSelect('member.user', 'user')
+      .leftJoinAndSelect('member.plan', 'plan')
+      .withDeleted()
+      .where('user.id = :userId AND member.status = :status', { userId, status: 'ACTIVE' })
+      .orderBy('member.endDate', 'DESC')
+      .getOne();
 
     if (!member || !this.isMembershipCurrentlyActive(member)) {
       return null;
@@ -79,11 +86,14 @@ export class MembersService {
     if (!userIds.length) {
       return Promise.resolve([] as Member[]);
     }
-    return this.membersRepository.find({
-      where: { user: { id: In(userIds) } },
-      relations: { user: true, plan: true },
-      order: { endDate: 'DESC' },
-    });
+    return this.membersRepository
+      .createQueryBuilder('member')
+      .leftJoinAndSelect('member.user', 'user')
+      .leftJoinAndSelect('member.plan', 'plan')
+      .withDeleted()
+      .where('user.id IN (:...userIds)', { userIds })
+      .orderBy('member.endDate', 'DESC')
+      .getMany();
   }
 
   getDisplayStatus(member: Member | null | undefined): string {
@@ -103,11 +113,14 @@ export class MembersService {
   }
 
   async getMyMembership(userId: string) {
-    const member = await this.membersRepository.findOne({
-      where: { user: { id: userId } },
-      relations: { plan: true },
-      order: { endDate: 'DESC' },
-    });
+    const member = await this.membersRepository
+      .createQueryBuilder('member')
+      .leftJoinAndSelect('member.user', 'user')
+      .leftJoinAndSelect('member.plan', 'plan')
+      .withDeleted()
+      .where('user.id = :userId', { userId })
+      .orderBy('member.endDate', 'DESC')
+      .getOne();
 
     if (!member) {
       return null;
@@ -123,7 +136,7 @@ export class MembersService {
     };
   }
 
-  create(createMemberDto: CreateMemberDto & { userId: string }) {
+  async create(createMemberDto: CreateMemberDto & { userId: string }) {
     const member = this.membersRepository.create({
       user: { id: createMemberDto.userId },
       plan: { id: createMemberDto.planId },
@@ -131,7 +144,39 @@ export class MembersService {
       endDate: new Date(createMemberDto.endDate),
       status: 'ACTIVE',
     });
-    return this.membersRepository.save(member);
+    const saved = await this.membersRepository.save(member);
+
+    // Asynchronously notify admin and send confirmation to member
+    this.membersRepository.findOne({
+      where: { id: saved.id },
+      relations: { user: true, plan: true },
+    }).then(fullMember => {
+      if (fullMember && fullMember.user) {
+        this.mailService.sendNewMembershipAdminNotificationEmail({
+          memberName: fullMember.user.name || 'Member',
+          memberEmail: fullMember.user.email,
+          planName: fullMember.plan?.name || 'Membership Plan',
+          planPrice: fullMember.plan?.price,
+          durationMonths: fullMember.plan?.durationMonths,
+          startDate: fullMember.startDate,
+          endDate: fullMember.endDate,
+        }).catch(err => this.logger.error('Failed to send admin membership notification:', err));
+
+        this.mailService.sendMembershipConfirmationEmail({
+          memberName: fullMember.user.name || 'Member',
+          memberEmail: fullMember.user.email,
+          planName: fullMember.plan?.name || 'Membership Plan',
+          planPrice: fullMember.plan?.price,
+          durationMonths: fullMember.plan?.durationMonths,
+          startDate: fullMember.startDate,
+          endDate: fullMember.endDate,
+        }).catch(err => this.logger.error('Failed to send member confirmation email:', err));
+      }
+    }).catch(err => {
+      this.logger.error('Failed to query member details for notification email:', err);
+    });
+
+    return saved;
   }
 
   update(id: string, updateMemberDto: UpdateMemberDto) {

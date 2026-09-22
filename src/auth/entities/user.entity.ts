@@ -28,4 +28,10 @@ export class User {
 
   @Column({ type: 'varchar', nullable: true })
   profileImage: string;
+
+  @Column({ default: false })
+  emailVerified: boolean;
+
+  @Column({ type: 'timestamp', nullable: true })
+  emailVerifiedAt: Date | null;
 }

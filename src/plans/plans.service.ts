@@ -42,6 +42,6 @@ export class PlansService {
   }
 
   async remove(id: string): Promise<void> {
-    await this.plansRepository.delete(id);
+    await this.plansRepository.softDelete(id);
   }
 }
