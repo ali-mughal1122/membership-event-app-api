@@ -391,10 +391,21 @@ export class EventsService implements OnModuleInit {
       return event;
     }
 
-    const events = await this.eventsRepository.find();
-    return (
-      events.find(item => this.slugSegment(item) === segment) || null
-    );
+    // Direct indexed query by title lowercase or id before considering fallback
+    const titleHyphenated = segment.replace(/-/g, ' ');
+    event = await this.eventsRepository
+      .createQueryBuilder('event')
+      .where('LOWER(event.title) = :exactTitle OR LOWER(event.title) LIKE :titlePattern', {
+        exactTitle: titleHyphenated,
+        titlePattern: `%${titleHyphenated}%`,
+      })
+      .getOne();
+
+    if (event && this.slugSegment(event) === segment) {
+      return event;
+    }
+
+    return null;
   }
 
   private slugSegment(event: Event) {

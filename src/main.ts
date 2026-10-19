@@ -18,8 +18,11 @@ async function bootstrap() {
   }));
 
   app.use((req, res, next) => {
-    console.log(`[REQUEST] ${req.method} ${req.originalUrl}`);
-    console.log(`[AUTHORIZATION]`, req.headers['authorization']);
+    // Structured minimal request logger (avoid leaking bearer tokens)
+    if (process.env.NODE_ENV !== 'production') {
+      const hasAuth = !!req.headers['authorization'];
+      console.log(`[REQUEST] ${req.method} ${req.originalUrl} (authenticated: ${hasAuth})`);
+    }
     next();
   });
 

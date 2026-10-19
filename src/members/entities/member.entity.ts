@@ -1,8 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, Index } from 'typeorm';
 import { User } from '../../auth/entities/user.entity';
 import { Plan } from '../../plans/entities/plan.entity';
 
 @Entity()
+@Index(['status', 'endDate'])
 export class Member {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -16,9 +17,11 @@ export class Member {
   @Column()
   startDate: Date;
 
+  @Index()
   @Column()
   endDate: Date;
 
+  @Index()
   @Column({ default: 'ACTIVE' })
   status: string;
 }

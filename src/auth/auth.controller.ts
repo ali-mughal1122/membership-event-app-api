@@ -9,6 +9,8 @@ import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 
+import { UpdateProfileDto } from './dto/update-profile.dto';
+
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -57,7 +59,7 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Post('profile')
-  async updateProfile(@Request() req, @Body() body: any) {
+  async updateProfile(@Request() req, @Body() body: UpdateProfileDto) {
     return this.authService.updateProfile(req.user.userId, body);
   }
 }

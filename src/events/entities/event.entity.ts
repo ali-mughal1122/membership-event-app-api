@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany, Index } from 'typeorm';
 import { EventRegistration } from './event-registration.entity';
 
 @Entity()
@@ -12,12 +12,14 @@ export class Event {
   @Column('text')
   description: string;
 
+  @Index()
   @Column()
   date: Date;
 
   @Column()
   location: string;
 
+  @Index()
   @Column({ default: 'Published' })
   status: string;
 
@@ -27,6 +29,7 @@ export class Event {
   @Column({ nullable: true })
   banner: string;
 
+  @Index()
   @Column({ nullable: true })
   slug: string;
 

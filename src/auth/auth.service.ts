@@ -306,11 +306,23 @@ export class AuthService implements OnModuleInit {
     if (!user) throw new UnauthorizedException('User not found');
 
     if (updateData.profileImage) {
-      const matches = updateData.profileImage.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-      if (matches && matches.length === 3) {
-        const mimeType = matches[1];
-        const base64Data = matches[2];
-        const ext = mimeType.split('/')[1] || 'png';
+      const matches = updateData.profileImage.match(/^data:(image\/(jpeg|png|webp));base64,(.+)$/i);
+      if (matches && matches.length >= 4) {
+        const rawMime = matches[1].toLowerCase();
+        const base64Data = matches[3];
+        const buffer = Buffer.from(base64Data, 'base64');
+
+        // Enforce maximum 3MB avatar file size
+        if (buffer.length > 3 * 1024 * 1024) {
+          throw new BadRequestException('Profile image cannot exceed 3MB.');
+        }
+
+        const extMap: Record<string, string> = {
+          'image/jpeg': 'jpg',
+          'image/png': 'png',
+          'image/webp': 'webp',
+        };
+        const ext = extMap[rawMime] || 'jpg';
         const fileName = `profile-${userId}.${ext}`;
 
         const fs = require('fs');
@@ -321,8 +333,10 @@ export class AuthService implements OnModuleInit {
         }
 
         const filePath = path.join(dir, fileName);
-        fs.writeFileSync(filePath, Buffer.from(base64Data, 'base64'));
+        fs.writeFileSync(filePath, buffer);
         user.profileImage = fileName;
+      } else if (updateData.profileImage.startsWith('data:')) {
+        throw new BadRequestException('Unsupported image format. Please use JPEG, PNG, or WebP.');
       }
     }
 

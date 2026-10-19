@@ -12,13 +12,15 @@ export class CreateMemberDto {
   @IsNotEmpty()
   planId: string;
 
-  @ApiProperty({ example: '2026-07-01T00:00:00Z' })
+  @ApiProperty({ example: '2026-07-01T00:00:00Z', required: false })
   @IsDateString()
-  startDate: string;
+  @IsOptional()
+  startDate?: string;
 
-  @ApiProperty({ example: '2027-07-01T00:00:00Z' })
+  @ApiProperty({ example: '2027-07-01T00:00:00Z', required: false })
   @IsDateString()
-  endDate: string;
+  @IsOptional()
+  endDate?: string;
 
   @ApiProperty({ example: 'ACTIVE', required: false })
   @IsString()

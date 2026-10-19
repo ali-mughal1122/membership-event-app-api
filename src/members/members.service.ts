@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Member } from './entities/member.entity';
+import { Plan } from '../plans/entities/plan.entity';
 import { CreateMemberDto } from './dto/create-member.dto';
 import { UpdateMemberDto } from './dto/update-member.dto';
 import { PaginationQuery, parsePagination, paginated } from '../common/pagination';
@@ -14,6 +15,8 @@ export class MembersService {
   constructor(
     @InjectRepository(Member)
     private membersRepository: Repository<Member>,
+    @InjectRepository(Plan)
+    private plansRepository: Repository<Plan>,
     private mailService: MailService,
   ) {}
 
@@ -137,11 +140,21 @@ export class MembersService {
   }
 
   async create(createMemberDto: CreateMemberDto & { userId: string }) {
+    const plan = await this.plansRepository.findOneBy({ id: createMemberDto.planId });
+    if (!plan) {
+      throw new NotFoundException('Selected membership plan was not found.');
+    }
+
+    const startDate = createMemberDto.startDate ? new Date(createMemberDto.startDate) : new Date();
+    const durationMonths = Number(plan.durationMonths) || 1;
+    const endDate = new Date(startDate);
+    endDate.setMonth(endDate.getMonth() + durationMonths);
+
     const member = this.membersRepository.create({
       user: { id: createMemberDto.userId },
-      plan: { id: createMemberDto.planId },
-      startDate: new Date(createMemberDto.startDate),
-      endDate: new Date(createMemberDto.endDate),
+      plan: { id: plan.id },
+      startDate,
+      endDate,
       status: 'ACTIVE',
     });
     const saved = await this.membersRepository.save(member);
@@ -155,9 +168,9 @@ export class MembersService {
         this.mailService.sendNewMembershipAdminNotificationEmail({
           memberName: fullMember.user.name || 'Member',
           memberEmail: fullMember.user.email,
-          planName: fullMember.plan?.name || 'Membership Plan',
-          planPrice: fullMember.plan?.price,
-          durationMonths: fullMember.plan?.durationMonths,
+          planName: fullMember.plan?.name || plan.name,
+          planPrice: fullMember.plan?.price ?? plan.price,
+          durationMonths: fullMember.plan?.durationMonths ?? durationMonths,
           startDate: fullMember.startDate,
           endDate: fullMember.endDate,
         }).catch(err => this.logger.error('Failed to send admin membership notification:', err));
@@ -165,9 +178,9 @@ export class MembersService {
         this.mailService.sendMembershipConfirmationEmail({
           memberName: fullMember.user.name || 'Member',
           memberEmail: fullMember.user.email,
-          planName: fullMember.plan?.name || 'Membership Plan',
-          planPrice: fullMember.plan?.price,
-          durationMonths: fullMember.plan?.durationMonths,
+          planName: fullMember.plan?.name || plan.name,
+          planPrice: fullMember.plan?.price ?? plan.price,
+          durationMonths: fullMember.plan?.durationMonths ?? durationMonths,
           startDate: fullMember.startDate,
           endDate: fullMember.endDate,
         }).catch(err => this.logger.error('Failed to send member confirmation email:', err));

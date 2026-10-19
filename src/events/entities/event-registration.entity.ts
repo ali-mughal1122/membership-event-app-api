@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, Unique, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, Unique, JoinColumn, Index } from 'typeorm';
 import { Event } from './event.entity';
 import { User } from '../../auth/entities/user.entity';
 
@@ -9,6 +9,8 @@ export const RegistrationStatus = {
 
 @Entity()
 @Unique('UQ_event_registration_event_user', ['eventId', 'userId'])
+@Index(['eventId', 'status'])
+@Index(['userId'])
 export class EventRegistration {
   @PrimaryGeneratedColumn('uuid')
   id: string;
