@@ -15,7 +15,7 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Deploy Staging (Branch: dev)
+      - name: Deploy Staging Branch dev
         if: github.ref == 'refs/heads/dev'
         run: |
           echo "Deploying to Staging on Contabo..."
@@ -27,7 +27,7 @@ jobs:
           docker compose up -d --no-deps backend
           docker image prune -f
 
-      - name: Deploy Production (Branch: main)
+      - name: Deploy Production Branch main
         if: github.ref == 'refs/heads/main'
         run: |
           echo "Deploying to Production on Contabo..."
