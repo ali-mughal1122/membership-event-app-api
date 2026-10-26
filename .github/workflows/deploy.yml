@@ -1,0 +1,45 @@
+name: CI/CD Pipeline (Contabo VPS)
+
+on:
+  push:
+    branches:
+      - dev
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to Contabo VPS
+    runs-on: [self-hosted, contabo-vps]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Deploy Staging (Branch: dev)
+        if: github.ref == 'refs/heads/dev'
+        run: |
+          echo "Deploying to Staging on Contabo..."
+          cd /opt/taxiterminalen/stage/backend
+          git fetch origin dev
+          git reset --hard origin/dev
+          cd /opt/taxiterminalen/stage
+          docker compose build backend
+          docker compose up -d --no-deps backend
+          docker image prune -f
+
+      - name: Deploy Production (Branch: main)
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "Deploying to Production on Contabo..."
+          cd /opt/taxiterminalen/prod/backend
+          git fetch origin main
+          git reset --hard origin/main
+          cd /opt/taxiterminalen/prod
+          docker compose build backend
+          docker compose up -d --no-deps backend
+          docker image prune -f
+
+      - name: Verify Health
+        run: |
+          sleep 5
+          docker ps --filter "name=taxiterminalen-backend"
