@@ -30,7 +30,7 @@ import { SupportModule } from './support/support.module';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
         autoLoadEntities: true,
-        synchronize: true, // Auto-syncs schema, set to false in production
+        synchronize: configService.get<string>('DB_SYNCHRONIZE') === 'true', // Safe! Defaults to false in prod
       }),
       inject: [ConfigService],
     }),
