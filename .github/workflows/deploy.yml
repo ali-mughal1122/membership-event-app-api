@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - dev
+      - stage
       - main
 
 jobs:
@@ -15,22 +16,22 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Deploy Staging Branch dev
-        if: github.ref == 'refs/heads/dev'
+      - name: Deploy to Staging from dev or stage branch
+        if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/stage'
         run: |
-          echo "Deploying to Staging on Contabo..."
+          echo "Deploying ${{ github.ref_name }} branch to Staging on Contabo..."
           cd /opt/taxiterminalen/stage/backend
-          git fetch origin dev
-          git reset --hard origin/dev
+          git fetch origin ${{ github.ref_name }}
+          git reset --hard origin/${{ github.ref_name }}
           cd /opt/taxiterminalen/stage
           docker compose build backend
           docker compose up -d --no-deps backend
           docker image prune -f
 
-      - name: Deploy Production Branch main
+      - name: Deploy to Production from main branch
         if: github.ref == 'refs/heads/main'
         run: |
-          echo "Deploying to Production on Contabo..."
+          echo "Deploying main branch to Production on Contabo..."
           cd /opt/taxiterminalen/prod/backend
           git fetch origin main
           git reset --hard origin/main
