@@ -1,8 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, Unique, Index } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne } from 'typeorm';
 import { User } from '../../auth/entities/user.entity';
 
 @Entity()
-@Unique('UQ_review_user', ['user'])
 export class Review {
   @PrimaryGeneratedColumn('uuid')
   id: string;
