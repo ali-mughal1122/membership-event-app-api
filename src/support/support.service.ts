@@ -179,13 +179,15 @@ export class SupportService {
       reopen: false,
     });
 
-    void this.mailService.sendSupportReplyEmail({
-      memberEmail: conversation.user.email,
-      memberName: conversation.user.name || conversation.user.email,
-      subject: conversation.subject,
-      message: body,
-      conversationId: conversation.id,
-    });
+    if (conversation.user?.email) {
+      void this.mailService.sendSupportReplyEmail({
+        memberEmail: conversation.user.email,
+        memberName: conversation.user.name || conversation.user.email,
+        subject: conversation.subject,
+        message: body,
+        conversationId: conversation.id,
+      });
+    }
 
     return this.getForAdmin(id);
   }

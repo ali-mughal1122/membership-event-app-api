@@ -4,10 +4,12 @@ import { Plan } from '../../plans/entities/plan.entity';
 
 @Entity()
 @Index(['status', 'endDate'])
+@Index(['user'])
 export class Member {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Index()
   @ManyToOne(() => User)
   user: User;
 

@@ -18,6 +18,7 @@ async function bootstrap() {
   // Enable global validation pipe
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true, // strip out unexpected fields
+    transform: true, // automatically coerce payload types (numbers, booleans, dates)
   }));
 
   app.use((req, res, next) => {
