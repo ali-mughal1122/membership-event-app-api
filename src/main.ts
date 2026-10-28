@@ -5,16 +5,20 @@ import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  
+
+  const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',')
+    : ['http://localhost:4200'];
+
   app.enableCors({
-    origin: true,
+    origin: allowedOrigins,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
-
   // Enable global validation pipe
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true, // strip out unexpected fields
+    transform: true, // automatically coerce payload types (numbers, booleans, dates)
   }));
 
   app.use((req, res, next) => {
@@ -25,7 +29,7 @@ async function bootstrap() {
     }
     next();
   });
-
+  app.setGlobalPrefix('api');
   // Configure Swagger
   const config = new DocumentBuilder()
     .setTitle('Membership Event API')
@@ -36,6 +40,7 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api/docs', app, document);
 
-  await app.listen(process.env.PORT || 3000);
+  const port = process.env.PORT || 3000;
+  await app.listen(port, '0.0.0.0');
 }
-bootstrap();
+bootstrap();

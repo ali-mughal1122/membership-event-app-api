@@ -8,6 +8,7 @@ export class Member {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Index()
   @ManyToOne(() => User)
   user: User;
 

@@ -145,7 +145,16 @@ export class MembersService {
       throw new NotFoundException('Selected membership plan was not found.');
     }
 
-    const startDate = createMemberDto.startDate ? new Date(createMemberDto.startDate) : new Date();
+    const activeExisting = await this.getActiveMembershipForUser(createMemberDto.userId);
+    let startDate: Date;
+    if (createMemberDto.startDate) {
+      startDate = new Date(createMemberDto.startDate);
+    } else if (activeExisting && new Date(activeExisting.endDate) > new Date()) {
+      startDate = new Date(activeExisting.endDate);
+    } else {
+      startDate = new Date();
+    }
+
     const durationMonths = Number(plan.durationMonths) || 1;
     const endDate = new Date(startDate);
     endDate.setMonth(endDate.getMonth() + durationMonths);

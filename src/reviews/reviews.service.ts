@@ -47,24 +47,26 @@ export class ReviewsService {
       }
     });
 
-    const fs = require('fs');
-    const path = require('path');
-    
-    return reviews.map(review => {
-      let profileImageBase64: string | null = null;
-      if (review.user?.profileImage) {
-        try {
-          const filePath = path.join(process.cwd(), 'uploads/profiles', review.user.profileImage);
-          if (fs.existsSync(filePath)) {
-            const fileData = fs.readFileSync(filePath);
+    const fs = await import('fs/promises');
+    const path = await import('path');
+
+    return Promise.all(
+      reviews.map(async (review) => {
+        let profileImageBase64: string | null = null;
+        if (review.user?.profileImage) {
+          try {
+            const filePath = path.join(process.cwd(), 'uploads/profiles', review.user.profileImage);
+            const fileData = await fs.readFile(filePath);
             const ext = review.user.profileImage.split('.').pop() || 'png';
             profileImageBase64 = `data:image/${ext};base64,${fileData.toString('base64')}`;
+          } catch (e) {
+            // Missing image - graceful fallback
           }
-        } catch (e) {}
-      }
-      review.user.profileImage = profileImageBase64 as any;
-      return review;
-    });
+        }
+        review.user.profileImage = profileImageBase64 as any;
+        return review;
+      }),
+    );
   }
 
   async findMyReview(userId: string) {
@@ -72,26 +74,26 @@ export class ReviewsService {
       where: { user: { id: userId } },
       relations: { user: true },
     });
-    
+
     if (review) {
-       // Only return safe user fields
-       const { password, phone, address, type, profileImage, ...safeUser } = review.user as any;
-       
-       let profileImageBase64: string | null = null;
-       if (profileImage) {
-         try {
-           const fs = require('fs');
-           const path = require('path');
-           const filePath = path.join(process.cwd(), 'uploads/profiles', profileImage);
-           if (fs.existsSync(filePath)) {
-             const fileData = fs.readFileSync(filePath);
-             const ext = profileImage.split('.').pop() || 'png';
-             profileImageBase64 = `data:image/${ext};base64,${fileData.toString('base64')}`;
-           }
-         } catch (e) {}
-       }
-       
-       review.user = { ...safeUser, profileImage: profileImageBase64 } as any;
+      // Only return safe user fields
+      const { password, phone, address, type, profileImage, ...safeUser } = review.user as any;
+
+      let profileImageBase64: string | null = null;
+      if (profileImage) {
+        try {
+          const fs = await import('fs/promises');
+          const path = await import('path');
+          const filePath = path.join(process.cwd(), 'uploads/profiles', profileImage);
+          const fileData = await fs.readFile(filePath);
+          const ext = profileImage.split('.').pop() || 'png';
+          profileImageBase64 = `data:image/${ext};base64,${fileData.toString('base64')}`;
+        } catch (e) {
+          // Missing image - graceful fallback
+        }
+      }
+
+      review.user = { ...safeUser, profileImage: profileImageBase64 } as any;
     }
     return review;
   }

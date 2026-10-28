@@ -283,16 +283,14 @@ export class AuthService implements OnModuleInit {
     let profileImageBase64: string | null = null;
     if (user.profileImage) {
       try {
-        const fs = require('fs');
-        const path = require('path');
+        const fs = await import('fs/promises');
+        const path = await import('path');
         const filePath = path.join(process.cwd(), 'uploads/profiles', user.profileImage);
-        if (fs.existsSync(filePath)) {
-          const fileData = fs.readFileSync(filePath);
-          const ext = user.profileImage.split('.').pop() || 'png';
-          profileImageBase64 = `data:image/${ext};base64,${fileData.toString('base64')}`;
-        }
+        const fileData = await fs.readFile(filePath);
+        const ext = user.profileImage.split('.').pop() || 'png';
+        profileImageBase64 = `data:image/${ext};base64,${fileData.toString('base64')}`;
       } catch (err) {
-        console.error('Failed to read profile image', err);
+        // Image missing or unreadable - safe fallback
       }
     }
 
@@ -325,15 +323,13 @@ export class AuthService implements OnModuleInit {
         const ext = extMap[rawMime] || 'jpg';
         const fileName = `profile-${userId}.${ext}`;
 
-        const fs = require('fs');
-        const path = require('path');
+        const fs = await import('fs/promises');
+        const path = await import('path');
         const dir = path.join(process.cwd(), 'uploads/profiles');
-        if (!fs.existsSync(dir)) {
-          fs.mkdirSync(dir, { recursive: true });
-        }
+        await fs.mkdir(dir, { recursive: true });
 
         const filePath = path.join(dir, fileName);
-        fs.writeFileSync(filePath, buffer);
+        await fs.writeFile(filePath, buffer);
         user.profileImage = fileName;
       } else if (updateData.profileImage.startsWith('data:')) {
         throw new BadRequestException('Unsupported image format. Please use JPEG, PNG, or WebP.');

@@ -1,0 +1,52 @@
+name: CI/CD Pipeline (Contabo VPS)
+
+on:
+  push:
+    branches:
+      - stage
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to Contabo VPS
+    runs-on: [self-hosted, contabo-vps]
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Staging from stage branch
+        if: github.ref == 'refs/heads/stage'
+        run: |
+          echo "Deploying stage branch to Staging on Contabo..."
+          cd /opt/taxiterminalen/stage/backend
+          git fetch origin stage
+          git reset --hard origin/stage
+          cd /opt/taxiterminalen/stage
+          if [ -f /opt/taxiterminalen/stage/backend/stage.conf ] && [ -d /opt/taxiterminalen/stage/nginx/conf.d ]; then
+            cp /opt/taxiterminalen/stage/backend/stage.conf /opt/taxiterminalen/stage/nginx/conf.d/stage.conf
+            docker compose exec -T nginx-gateway nginx -s reload || true
+          fi
+          docker compose build backend
+          docker compose up -d --no-deps backend
+          docker image prune -f
+
+      - name: Deploy to Production from main branch
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "Deploying main branch to Production on Contabo..."
+          cd /opt/taxiterminalen/prod/backend
+          git fetch origin main
+          git reset --hard origin/main
+          cd /opt/taxiterminalen/prod
+          docker compose build backend
+          docker compose up -d --no-deps backend
+          docker image prune -f
+
+      - name: Verify Health
+        run: |
+          sleep 10
+          docker ps --filter "name=taxiterminalen-backend"
+          echo "=== Backend Container Logs ==="
+          docker logs --tail 50 stage-taxiterminalen-backend || true
+
