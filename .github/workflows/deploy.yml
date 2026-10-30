@@ -27,6 +27,9 @@ jobs:
             cp /opt/taxiterminalen/stage/backend/stage.conf /opt/taxiterminalen/stage/nginx/conf.d/stage.conf
             docker compose exec -T nginx-gateway nginx -s reload || true
           fi
+          if [ -f /opt/taxiterminalen/stage/backend/docker-compose.stage.yml ]; then
+            cp /opt/taxiterminalen/stage/backend/docker-compose.stage.yml /opt/taxiterminalen/stage/docker-compose.yml
+          fi
           mkdir -p /opt/taxiterminalen/stage/uploads/profiles
           chown -R 1000:1000 /opt/taxiterminalen/stage/uploads || true
           docker compose build backend
