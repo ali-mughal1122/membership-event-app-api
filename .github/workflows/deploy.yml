@@ -27,6 +27,11 @@ jobs:
             cp /opt/taxiterminalen/stage/backend/stage.conf /opt/taxiterminalen/stage/nginx/conf.d/stage.conf
             docker compose exec -T nginx-gateway nginx -s reload || true
           fi
+          if [ -f /opt/taxiterminalen/stage/backend/docker-compose.stage.yml ]; then
+            cp /opt/taxiterminalen/stage/backend/docker-compose.stage.yml /opt/taxiterminalen/stage/docker-compose.yml
+          fi
+          mkdir -p /opt/taxiterminalen/stage/uploads/profiles
+          chown -R 1000:1000 /opt/taxiterminalen/stage/uploads || true
           docker compose build backend
           docker compose up -d --no-deps backend
           docker image prune -f
@@ -39,6 +44,8 @@ jobs:
           git fetch origin main
           git reset --hard origin/main
           cd /opt/taxiterminalen/prod
+          mkdir -p /opt/taxiterminalen/prod/uploads/profiles
+          chown -R 1000:1000 /opt/taxiterminalen/prod/uploads || true
           docker compose build backend
           docker compose up -d --no-deps backend
           docker image prune -f

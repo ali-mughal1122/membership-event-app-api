@@ -25,6 +25,9 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
+# Ensure uploads directory exists and is owned by the node user
+RUN mkdir -p /app/uploads/profiles && chown -R node:node /app
+
 # Security: Run as non-root built-in node user
 USER node
 
