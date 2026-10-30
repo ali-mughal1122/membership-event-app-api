@@ -2,6 +2,7 @@ import {
   Injectable,
   UnauthorizedException,
   BadRequestException,
+  InternalServerErrorException,
   OnModuleInit,
   Logger,
 } from '@nestjs/common';
@@ -303,36 +304,52 @@ export class AuthService implements OnModuleInit {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) throw new UnauthorizedException('User not found');
 
-    if (updateData.profileImage) {
-      const matches = updateData.profileImage.match(/^data:(image\/(jpeg|png|webp));base64,(.+)$/i);
-      if (matches && matches.length >= 4) {
-        const rawMime = matches[1].toLowerCase();
-        const base64Data = matches[3];
-        const buffer = Buffer.from(base64Data, 'base64');
+    const previousImageFile = user.profileImage;
 
-        // Enforce maximum 3MB avatar file size
-        if (buffer.length > 3 * 1024 * 1024) {
-          throw new BadRequestException('Profile image cannot exceed 3MB.');
+    if (updateData.profileImage !== undefined) {
+      if (updateData.profileImage) {
+        const matches = updateData.profileImage.match(/^data:(image\/(jpeg|jpg|png|webp));base64,(.+)$/i);
+        if (matches && matches.length >= 4) {
+          const rawMime = matches[1].toLowerCase();
+          const base64Data = matches[3];
+          const buffer = Buffer.from(base64Data, 'base64');
+
+          // Enforce maximum 3MB avatar file size
+          if (buffer.length > 3 * 1024 * 1024) {
+            throw new BadRequestException('Profile image cannot exceed 3MB.');
+          }
+
+          const extMap: Record<string, string> = {
+            'image/jpeg': 'jpg',
+            'image/jpg': 'jpg',
+            'image/png': 'png',
+            'image/webp': 'webp',
+          };
+          const ext = extMap[rawMime] || 'jpg';
+          const fileName = `profile-${userId}-${Date.now()}.${ext}`;
+
+          try {
+            const fs = await import('fs/promises');
+            const path = await import('path');
+            const dir = path.join(process.cwd(), 'uploads/profiles');
+            await fs.mkdir(dir, { recursive: true });
+
+            const filePath = path.join(dir, fileName);
+            await fs.writeFile(filePath, buffer);
+            user.profileImage = fileName;
+          } catch (err) {
+            this.logger.error(`Failed to save profile image for user ${userId}: ${err.message}`, err.stack);
+            throw new InternalServerErrorException('Failed to save profile image to server storage.');
+          }
+        } else if (updateData.profileImage.startsWith('data:')) {
+          throw new BadRequestException('Unsupported image format. Please use JPEG, PNG, or WebP.');
+        } else if (updateData.profileImage.startsWith('http://') || updateData.profileImage.startsWith('https://')) {
+          // External avatar URL or reset avatar
+          user.profileImage = null;
         }
-
-        const extMap: Record<string, string> = {
-          'image/jpeg': 'jpg',
-          'image/png': 'png',
-          'image/webp': 'webp',
-        };
-        const ext = extMap[rawMime] || 'jpg';
-        const fileName = `profile-${userId}.${ext}`;
-
-        const fs = await import('fs/promises');
-        const path = await import('path');
-        const dir = path.join(process.cwd(), 'uploads/profiles');
-        await fs.mkdir(dir, { recursive: true });
-
-        const filePath = path.join(dir, fileName);
-        await fs.writeFile(filePath, buffer);
-        user.profileImage = fileName;
-      } else if (updateData.profileImage.startsWith('data:')) {
-        throw new BadRequestException('Unsupported image format. Please use JPEG, PNG, or WebP.');
+      } else {
+        // null or empty string: remove profile image
+        user.profileImage = null;
       }
     }
 
@@ -342,7 +359,27 @@ export class AuthService implements OnModuleInit {
 
     await this.userRepository.save(user);
 
+    // If an image was updated or removed, delete the previous image file from disk
+    if (previousImageFile && previousImageFile !== user.profileImage) {
+      await this.deleteProfileImageFile(previousImageFile);
+    }
+
     return this.getMe(userId);
+  }
+
+  private async deleteProfileImageFile(fileName: string | null | undefined): Promise<void> {
+    if (!fileName) return;
+    try {
+      const fs = await import('fs/promises');
+      const path = await import('path');
+      const filePath = path.join(process.cwd(), 'uploads/profiles', fileName);
+      await fs.unlink(filePath);
+      this.logger.log(`Deleted previous profile image file: ${fileName}`);
+    } catch (err: any) {
+      if (err.code !== 'ENOENT') {
+        this.logger.warn(`Could not delete previous profile image (${fileName}): ${err.message}`);
+      }
+    }
   }
 
   private isValidPassword(password: string): boolean {

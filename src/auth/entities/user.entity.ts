@@ -27,7 +27,7 @@ export class User {
   type: string;
 
   @Column({ type: 'varchar', nullable: true })
-  profileImage: string;
+  profileImage: string | null;
 
   @Column({ default: false })
   emailVerified: boolean;

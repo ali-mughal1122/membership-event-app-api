@@ -177,6 +177,8 @@ services:
       PORT: 3500
       DB_HOST: postgres
       DB_PORT: 5432
+    volumes:
+      - ./uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
@@ -397,6 +399,8 @@ services:
       PORT: 3500
       DB_HOST: postgres
       DB_PORT: 5432
+    volumes:
+      - ./uploads:/app/uploads
     depends_on:
       postgres:
         condition: service_healthy
