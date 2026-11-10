@@ -14,6 +14,7 @@ import { UsersModule } from './users/users.module';
 import { SeedModule } from './seed/seed.module';
 import { CategoriesModule } from './categories/categories.module';
 import { SupportModule } from './support/support.module';
+import { SettingsModule } from './settings/settings.module';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { SupportModule } from './support/support.module';
     UsersModule,
     CategoriesModule,
     SupportModule,
+    SettingsModule,
     SeedModule,
   ],
   controllers: [AppController],
