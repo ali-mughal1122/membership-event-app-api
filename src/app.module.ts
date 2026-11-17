@@ -15,6 +15,7 @@ import { SeedModule } from './seed/seed.module';
 import { CategoriesModule } from './categories/categories.module';
 import { SupportModule } from './support/support.module';
 import { SettingsModule } from './settings/settings.module';
+import { NewsModule } from './news/news.module';
 
 @Module({
   imports: [
@@ -62,6 +63,7 @@ import { SettingsModule } from './settings/settings.module';
     CategoriesModule,
     SupportModule,
     SettingsModule,
+    NewsModule,
     SeedModule,
   ],
   controllers: [AppController],

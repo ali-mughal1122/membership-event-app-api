@@ -12,6 +12,7 @@ import { SupportConversation } from '../support/entities/support-conversation.en
 import { SupportMessage } from '../support/entities/support-message.entity';
 import { CATEGORY_URGENCY_RANK, CategoryUrgency } from '../categories/category-urgency';
 import { SupportSenderType, SupportStatus } from '../support/support.constants';
+import { News } from '../news/entities/news.entity';
 
 const DEMO_PASSWORD = '123123123';
 
@@ -28,6 +29,7 @@ export class SeedService implements OnModuleInit {
     @InjectRepository(Category) private categoriesRepository: Repository<Category>,
     @InjectRepository(SupportConversation) private conversationsRepository: Repository<SupportConversation>,
     @InjectRepository(SupportMessage) private messagesRepository: Repository<SupportMessage>,
+    @InjectRepository(News) private newsRepository: Repository<News>,
   ) { }
 
   async onModuleInit() {
@@ -38,7 +40,8 @@ export class SeedService implements OnModuleInit {
       await this.seedRegistrations(users, events);
       const categories = await this.seedCategories();
       await this.seedSupport(users, categories);
-      this.logger.log('Dummy plans, members, events, and support data are ready.');
+      await this.seedNews();
+      this.logger.log('Dummy plans, members, events, support data, and news are ready.');
     } catch (error) {
       this.logger.error('Failed to seed dummy data', error);
     }
@@ -632,6 +635,77 @@ export class SeedService implements OnModuleInit {
           }),
         );
       }
+    }
+  }
+
+  private async seedNews() {
+    const count = await this.newsRepository.count();
+    if (count > 0) return;
+
+    const dummyArticles: Array<Partial<News>> = [
+      {
+        title: 'Nyt fælles el-aftalepartner reducerer ladepriser med op til 28%',
+        slug: 'nyt-faelles-el-aftale-reducerer-ladepriser',
+        category: 'Aftaler & Fordele',
+        summary: 'Taxiterminalen indgår en skelsættende aftale med førende ladeoperatører for at reducere omkostningerne for elektriske taxier over hele landet.',
+        content: `<h3>Lavere driftsomkostninger for alle el-taxier</h3>
+<p>Som led i vores fortsatte arbejde for at forbedre chaufførers og vognmænds bundlinje, har Taxiterminalen forhandlet en ny samlet energiaftale på plads. Fra 1. december får alle aktive medlemmer adgang til eksklusive rabatter på både lynladning og stationsladning i Danmark.</p>
+<h4>Vigtigste fordele:</h4>
+<ul>
+  <li>28% fast rabat på lynladere (over 150 kW)</li>
+  <li>Ingen månedligt abonnementsgebyr for medlemmer af Taxiterminalen</li>
+  <li>Automatisk fakturering samlet på din månedlige oversigt</li>
+</ul>
+<p>Aftalen gælder alle godkendte vognmænd og tilknyttede chauffører. Log ind på din medlemsside for at aktivere dit ladekort.</p>`,
+        coverImage: 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=1600&q=80',
+        isPublished: true,
+        publishedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // 2 days ago
+      },
+      {
+        title: 'Opdatering om nye krav til taxibevillinger og vognmandskontroller i 2026',
+        slug: 'nye-krav-til-taxibevillinger-2026',
+        category: 'Regulering',
+        summary: 'Færdselsstyrelsen skærper kravene til digital dokumentation og flådeopgørelse. Få det fulde overblik og se hvad det betyder for din vogn.',
+        content: `<h3>Nye administrative retningslinjer</h3>
+<p>Fra starten af det nye år træder en række opdaterede bekendtgørelser i kraft vedrørende erhvervsmæssig personbefordring. Taxiterminalen har gennemgået de nye regler sammen med vores juridiske rådgivere.</p>
+<h4>Hvad du skal være opmærksom på:</h4>
+<ul>
+  <li>Krav om digital synkronisering af køre-/hviletidsdata</li>
+  <li>Opdaterede regler for udenlandsk vognmandslicens i hovedstadsområdet</li>
+  <li>Forenklede procedurer for udskiftning af reservebiler</li>
+</ul>
+<p>Taxiterminalen afholder et gratis webinar for alle medlemmer næste tirsdag kl. 14:00, hvor du kan stille spørgsmål direkte til juristerne.</p>`,
+        coverImage: 'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&w=1600&q=80',
+        isPublished: true,
+        publishedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
+      },
+      {
+        title: 'Taxiterminalen lancerer forbedret chaufførforsikring med lavere selvrisiko',
+        slug: 'forbedret-chauffoerforsikring-lavere-selvrisiko',
+        category: 'Forsikring',
+        summary: 'I samarbejde med et førende nordisk forsikringsselskab tilbyder vi nu en skræddersyet erhvervsforsikring målrettet taxi- og persontransport.',
+        content: `<h3>Maksimal tryghed på vejene</h3>
+<p>Uheld og kaskoskader kan have alvorlige konsekvenser for vognmandens likviditet. Vores nye kollektive forsikringsaftale er specifikt forhandlet ud fra vores samlede medlemsmasse, hvilket sikrer markedets skarpeste priser.</p>
+<p>Inkluderet i dækningen er hurtig lånevogn ved skade, reduceret glasselvrisiko samt udvidet førerulykkesforsikring.</p>`,
+        coverImage: 'https://images.unsplash.com/photo-1515542622106-78bda8ba0e5b?auto=format&fit=crop&w=1600&q=80',
+        isPublished: true,
+        publishedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000), // 10 days ago
+      },
+      {
+        title: 'Årsmøde og Netværksaften for Vognmænd i København',
+        slug: 'aarsmoede-og-netvaerksaften-koebenhavn',
+        category: 'Begivenheder',
+        summary: 'Mød kolleger fra hele branchen, hør oplæg om fremtidens mobilitet, og deltag i debatten om branchens udfordringer og muligheder.',
+        content: `<h3>Velkommen til årets største branchemøde</h3>
+<p>Vi glæder os til at byde både nye og erfarne medlemmer velkommen til vores årlige netværksaften. Der vil være let forplejning, gæstetalere fra transportsektoren og rig mulighed for at udveksle erfaringer med andre vognmænd og chauffører.</p>`,
+        coverImage: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1600&q=80',
+        isPublished: true,
+        publishedAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000), // 15 days ago
+      },
+    ];
+
+    for (const item of dummyArticles) {
+      await this.newsRepository.save(this.newsRepository.create(item));
     }
   }
 }

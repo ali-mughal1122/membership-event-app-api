@@ -9,9 +9,10 @@ import { EventRegistration } from '../events/entities/event-registration.entity'
 import { Category } from '../categories/entities/category.entity';
 import { SupportConversation } from '../support/entities/support-conversation.entity';
 import { SupportMessage } from '../support/entities/support-message.entity';
+import { News } from '../news/entities/news.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Plan, User, Member, Event, EventRegistration, Category, SupportConversation, SupportMessage])],
+  imports: [TypeOrmModule.forFeature([Plan, User, Member, Event, EventRegistration, Category, SupportConversation, SupportMessage, News])],
   providers: [SeedService],
 })
 export class SeedModule {}
